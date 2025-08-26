@@ -1,0 +1,10 @@
+🛠️ Requirements
+
+Python 3.8+
+XGBoost
+Pandas
+NumPy
+Matplotlib 
+Seaborn
+Scikit-learn
+PyYAML

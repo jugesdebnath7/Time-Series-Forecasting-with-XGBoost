@@ -205,3 +205,28 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ----------------------------
+# Project-Specific Ignores
+# ----------------------------
+
+# Configuration files (contains secrets or env paths)
+config/config.yaml
+
+# Data files (raw and processed — not version controlled)
+data/raw/
+data/processed/
+data/external/
+
+# Jupyter notebook checkpoints only — keep actual notebooks
+.ipynb_checkpoints/
+
+# (Optional) Scaffolding script — ignore if personal
+# project_scaffold.py
+
+# (Optional) Model artifacts — ignored by default; comment out to track
+models/
+*.pkl
+*.joblib
+*.h5
+
