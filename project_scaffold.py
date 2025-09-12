@@ -7,7 +7,7 @@ from pathlib import Path
 logging.basicConfig(
     level=logging.INFO, 
     format='%(asctime)s - %(levelname)s - %(message)s'
-                    )
+)
 
 # Step 2: Define all directories
 dir_list =[
