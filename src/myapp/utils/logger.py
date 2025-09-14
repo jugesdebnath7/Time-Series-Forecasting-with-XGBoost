@@ -7,15 +7,17 @@ from myapp.config.config_manager import ConfigManager
 
 
 class CustomLogger:
-    """Custom logger setup using configuration from ConfigManager."""
-
-    def __init__(self):
+    def __init__(
+        self,
+        module_name: str = None
+    ) -> None:
         """Initialize logger based on configuration."""
         self.config = ConfigManager().app
 
         # Paths
         self.log_dir = self.config.paths.logs
-        self.name = self.config.logging.app_name
+        # Use passed module_name or fallback to app name from config
+        self.name = module_name or self.config.logging.app_name
         self.log_to_console = self.config.logging.log_to_console
         self.log_file_name = self.config.logging.handlers["file"].filename
         self.log_file = os.path.join(self.log_dir, self.log_file_name)
@@ -30,7 +32,6 @@ class CustomLogger:
         if not hasattr(logging, level_str):
             raise ValueError(f"Invalid log level in config: {level_str}")
         self.level = getattr(logging, level_str)
-
 
     def get_logger(self) -> logging.Logger:
         os.makedirs(self.log_dir, exist_ok=True)

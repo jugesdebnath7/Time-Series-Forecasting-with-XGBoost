@@ -4,11 +4,11 @@ from typing import Union, Generator, Callable
 from myapp.utils.logger import CustomLogger
 
 
-class Ingestion:
+class DataIngestion:
     """
     Ingest data files (csv, json, parquet, xlsx) from a directory with eager or lazy loading.
-
     Lazy loading currently supports only 'csv' files.
+    
     """
 
     def __init__(
@@ -29,7 +29,6 @@ class Ingestion:
         self.logger = logger or CustomLogger(name=__name__).get_logger()
         self.reader: Callable = self._get_reader()
 
-
     def _get_reader(self) -> Callable:
         if self.file_type == 'csv':
             return pd.read_csv
@@ -43,10 +42,8 @@ class Ingestion:
             self.logger.error(f"Unsupported file type: {self.file_type}")
             raise ValueError(f"Unsupported file type: {self.file_type}")
 
-
     def ingest_data(self) -> Union[pd.DataFrame, Generator[pd.DataFrame, None, None]]:
         return self._lazy_ingest() if self.lazy else self._eager_ingest()
-
 
     def _eager_ingest(self) -> pd.DataFrame:
         files = list(self.data_path.glob(f"*.{self.file_type}"))
@@ -71,7 +68,6 @@ class Ingestion:
         combined_df = pd.concat(dfs, ignore_index=True)
         self.logger.info(f"Data ingested successfully with shape {combined_df.shape}")
         return combined_df
-
 
     def _lazy_ingest(self) -> Generator[pd.DataFrame, None, None]:
         if self.file_type != 'csv':

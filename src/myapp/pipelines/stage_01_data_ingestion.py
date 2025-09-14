@@ -2,10 +2,9 @@ import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
 from typing import Optional, Union, Generator
-from logging import Logger
 from myapp.config.config_manager import ConfigManager
 from myapp.utils.logger import CustomLogger
-from myapp.components.data_ingestion import Ingestion
+from myapp.components.data_ingestion import DataIngestion
 
 
 class DataIngestionPipeline:
@@ -19,8 +18,8 @@ class DataIngestionPipeline:
     def __init__(
         self,
         config: ConfigManager,
-        logger: Optional[Logger] = None
-    ):
+        logger: Optional[CustomLogger] = None
+    ) -> None:
         self.config = config
         self.logger = logger or CustomLogger(name=__name__).get_logger()
 
@@ -38,7 +37,7 @@ class DataIngestionPipeline:
             file_type = self._detect_file_type()
             self.logger.info(f"Starting data ingestion pipeline with file type: {file_type}")
 
-            ingestion = Ingestion(
+            ingestion = DataIngestion(
                 data_path=self.config.paths.raw,
                 file_type=file_type,
                 lazy=self.config.data.lazy,
