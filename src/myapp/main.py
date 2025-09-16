@@ -4,7 +4,7 @@ from myapp.config.config_manager import ConfigManager
 from myapp.utils.logger import CustomLogger
 from myapp.pipelines.stage_01_data_ingestion import DataIngestionPipeline
 from myapp.pipelines.stage_02_data_validation import DataValidationPipeline
-
+from myapp.pipelines.stage_03_data_preprocessing import DataPreprocessingPipeline
 
 class MainPipeline:
     """
@@ -37,6 +37,10 @@ class MainPipeline:
             # Stage 2: Data Validation
             validation_pipeline = DataValidationPipeline(config=self.config, logger=self.logger)
             validated_data = validation_pipeline.run(raw_data)
+            
+            # Stage 3: Data Preprocessing
+            preprocessing_pipeline = DataPreprocessingPipeline(config=self.config, logger=self.logger)
+            preprocessed_data = preprocessing_pipeline.run(validated_data)
 
             # === Additional pipeline stages go here ===
 
