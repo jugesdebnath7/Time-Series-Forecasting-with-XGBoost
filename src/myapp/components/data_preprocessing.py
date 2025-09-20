@@ -4,7 +4,7 @@ import numpy as np
 import collections.abc
 from typing import Optional
 from myapp.utils.logger import CustomLogger
-from myapp.data.preprocessing_schema import PreprocessingSchema
+from myapp.schemas.preprocessing_schema import PreprocessingSchema
 
 
 class DataPreprocessor:

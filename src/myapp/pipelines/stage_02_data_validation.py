@@ -21,7 +21,7 @@ class DataValidationPipeline:
         logger: Optional[CustomLogger] = None
     ):
         self.config = config
-        self.logger = logger or CustomLogger(name=__name__).get_logger()
+        self.logger = logger or CustomLogger(module_name=__name__).get_logger()
 
     def run(
         self, 
@@ -46,6 +46,21 @@ class DataValidationPipeline:
             
             self.logger.debug(f"Data type for validation: {type(data)}")
             validated_data = validator.validate(data)
+            
+            
+            # Temporary debug: peek into the data to verify ingestion and flow
+            if isinstance(validated_data, Generator):
+                try:
+                    first_chunk = next(validated_data)
+                    self.logger.info(f"First chunk preview:\n{first_chunk.head()}")
+                    # Re-create the generator so downstream stages can consume it fresh
+                    validated_data = validator.validate(validated_data)
+                except StopIteration:
+                    self.logger.warning("No data returned by ingestion.")
+            else:
+                self.logger.info(f"Data preview:\n{validated_data.head()}")
+            
+            
 
             self.logger.info("Data validation completed successfully.")
             return validated_data

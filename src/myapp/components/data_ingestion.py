@@ -1,6 +1,6 @@
 from pathlib import Path
 import pandas as pd
-from typing import Union, Generator, Callable
+from typing import Union, Generator, Callable, Optional
 from myapp.utils.logger import CustomLogger
 
 
@@ -17,7 +17,7 @@ class DataIngestion:
         file_type: str,
         lazy: bool = False,
         chunk_size: int = 100_000,
-        logger: CustomLogger = None
+        logger: Optional[CustomLogger] = None
     ) -> None:
         self.data_path = Path(data_path)
         if not self.data_path.exists() or not self.data_path.is_dir():
@@ -26,7 +26,7 @@ class DataIngestion:
         self.file_type = file_type.lower()
         self.lazy = lazy
         self.chunk_size = chunk_size
-        self.logger = logger or CustomLogger(name=__name__).get_logger()
+        self.logger = logger or CustomLogger(module_name=__name__).get_logger()
         self.reader: Callable = self._get_reader()
 
     def _get_reader(self) -> Callable:

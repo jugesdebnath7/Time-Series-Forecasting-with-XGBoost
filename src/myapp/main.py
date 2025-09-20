@@ -2,9 +2,14 @@ import logging
 from typing import Optional
 from myapp.config.config_manager import ConfigManager
 from myapp.utils.logger import CustomLogger
+
 from myapp.pipelines.stage_01_data_ingestion import DataIngestionPipeline
 from myapp.pipelines.stage_02_data_validation import DataValidationPipeline
-from myapp.pipelines.stage_03_data_preprocessing import DataPreprocessingPipeline
+from myapp.pipelines.stage_03_data_cleaning import DataCleaningPipeline
+from myapp.pipelines.stage_04_data_preprocessing import DataPreprocessingPipeline
+import pandas as pd
+from typing import Generator
+
 
 class MainPipeline:
     """
@@ -33,12 +38,16 @@ class MainPipeline:
             # Stage 1: Data Ingestion
             ingestion_pipeline = DataIngestionPipeline(config=self.config, logger=self.logger)
             raw_data = ingestion_pipeline.run()
-
-            # Stage 2: Data Validation
-            validation_pipeline = DataValidationPipeline(config=self.config, logger=self.logger)
-            validated_data = validation_pipeline.run(raw_data)
             
-            # Stage 3: Data Preprocessing
+            # Stage 2: Data Cleaning
+            cleaning_pipeline = DataCleaningPipeline(config=self.config, logger=self.logger)
+            cleaned_data = cleaning_pipeline.run(raw_data)
+
+            # Stage 3: Data Validation
+            validation_pipeline = DataValidationPipeline(config=self.config, logger=self.logger)
+            validated_data = validation_pipeline.run(cleaned_data)
+            
+            # Stage 4: Data Preprocessing
             preprocessing_pipeline = DataPreprocessingPipeline(config=self.config, logger=self.logger)
             preprocessed_data = preprocessing_pipeline.run(validated_data)
 
@@ -55,6 +64,6 @@ class MainPipeline:
 
 
 if __name__ == "__main__":
-    config = ConfigManager().app  # or however you get your config object
+    config = ConfigManager().app 
     main_pipeline = MainPipeline(config=config)
     main_pipeline.run()

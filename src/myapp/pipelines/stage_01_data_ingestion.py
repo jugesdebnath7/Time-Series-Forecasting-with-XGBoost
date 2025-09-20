@@ -21,7 +21,7 @@ class DataIngestionPipeline:
         logger: Optional[CustomLogger] = None
     ) -> None:
         self.config = config
-        self.logger = logger or CustomLogger(name=__name__).get_logger()
+        self.logger = logger or CustomLogger(module_name=__name__).get_logger()
 
     def run(self) -> Union[DataFrame, Generator[DataFrame, None, None]]:
         """
@@ -46,6 +46,22 @@ class DataIngestionPipeline:
             )
 
             data = ingestion.ingest_data()
+            
+            
+            # Temporary debug: peek into the data to verify ingestion and flow
+            if isinstance(data, Generator):
+                try:
+                    first_chunk = next(data)
+                    self.logger.info(f"First chunk preview:\n{first_chunk.head()}")
+                    # Re-create the generator so downstream stages can consume it fresh
+                    data = ingestion.ingest_data()
+                except StopIteration:
+                    self.logger.warning("No data returned by ingestion.")
+            else:
+                self.logger.info(f"Data preview:\n{data.head()}")
+
+
+
             self.logger.info("Data ingestion completed successfully.")
             return data
 

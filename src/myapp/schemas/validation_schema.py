@@ -8,24 +8,21 @@ class ValidationSchema:
 
     logger = CustomLogger(module_name=__name__).get_logger()
 
+    # Required columns with expected dtypes (already cleaned/standardized names expected)
     required_columns: Dict[str, str] = {
         "datetime": "datetime64[ns]",
         "aep_mw": "float64",
     }
 
-    rename_map: Dict[str, str] = {
-        "Datetime": "datetime",
-        "AEP_MW": "aep_mw",
-    }
-
+    # Columns allowed to have nulls, if any
     nullable_columns = set()
 
+    # Value constraints (e.g. min values)
     value_constraints: Dict[str, Dict[str, float]] = {
         "aep_mw": {"min": 0.0}
     }
 
-    default_values = {}
-
+    # Column descriptions for reference (optional)
     column_descriptions: Dict[str, str] = {
         "datetime": "Timestamp of the observation",
         "aep_mw": "Actual energy production in megawatts",
@@ -41,15 +38,15 @@ class ValidationSchema:
 
     @classmethod
     def validate_no_duplicates(cls, df: pd.DataFrame) -> None:
-        # Check duplicates on 'datetime' column since it should be unique in time series
+        """Check for duplicate datetime entries."""
         if df['datetime'].duplicated().any():
             cls.logger.error("Duplicate rows found in datetime column.")
-            raise ValueError("Duplicate rows found based on 'datetime' column")
+            raise ValueError("Duplicate rows found based on 'datetime' column.")
         cls.logger.info("No duplicates validation passed.")
 
     custom_validations = {
-        "datetime_monotonic": validate_datetime_monotonic,
-        "no_duplicates": validate_no_duplicates,
+        "datetime_monotonic": "validate_datetime_monotonic",
+        "no_duplicates": "validate_no_duplicates",
     }
 
     @classmethod
@@ -63,17 +60,13 @@ class ValidationSchema:
 
         cls.logger.info("Starting dataframe validation.")
 
-        # Rename columns
-        df = df.rename(columns=cls.rename_map)
-        cls.logger.debug(f"Columns renamed using map: {cls.rename_map}")
-
-        # Check required columns
+        # Check required columns exist
         missing_cols = [col for col in cls.required_columns if col not in df.columns]
         if missing_cols:
             cls.logger.error(f"Missing required columns: {missing_cols}")
             raise ValueError(f"Missing required columns: {missing_cols}")
 
-        # Validate dtypes
+        # Check dtypes exactly (no casting)
         for col, expected_dtype in cls.required_columns.items():
             if col in df.columns:
                 if not pd.api.types.is_dtype_equal(df[col].dtype, expected_dtype):
@@ -81,7 +74,14 @@ class ValidationSchema:
                     cls.logger.error(msg)
                     raise ValueError(msg)
 
-        # Value constraints
+        # Check for nulls in non-nullable columns
+        for col in cls.required_columns:
+            if col not in cls.nullable_columns and df[col].isnull().any():
+                msg = f"Column '{col}' contains null values but is not nullable."
+                cls.logger.error(msg)
+                raise ValueError(msg)
+
+        # Validate value constraints
         for col, constraints in cls.value_constraints.items():
             if col in df.columns:
                 if "min" in constraints and (df[col] < constraints["min"]).any():
@@ -89,9 +89,10 @@ class ValidationSchema:
                     cls.logger.error(msg)
                     raise ValueError(msg)
 
-        # Custom validations
-        for name, validation_fn in cls.custom_validations.items():
+        # Run custom validations
+        for name, method_name in cls.custom_validations.items():
             cls.logger.info(f"Running custom validation: {name}")
+            validation_fn = getattr(cls, method_name)
             validation_fn(df)
 
         cls.logger.info("Dataframe validation completed successfully.")
