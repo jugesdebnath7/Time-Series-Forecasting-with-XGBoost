@@ -1,22 +1,27 @@
 import pandas as pd
 from pandas import DataFrame
+from typing import Optional, Generator, Union
+from itertools import tee
+import collections.abc
 from myapp.utils.logger import CustomLogger
-from myapp.utils.column_mappings import get_rename_map
 from myapp.config.config_manager import ConfigManager
 from myapp.components.data_cleaning import DataCleaner
-from typing import Optional, Generator, Union, Dict
 
 
 class DataCleaningPipeline:
+    """
+    Cleans the input data using the configured cleaning logic.
+
+    Supports both eager (DataFrame) and lazy (Generator) execution.
+    Handles duplicates, nulls, or domain-specific inconsistencies as defined in `DataCleaner`.
+    """
     
     def __init__(
         self,
         config: ConfigManager,
-        rename_map: Optional[Dict[str, str]] = None,
         logger: Optional[CustomLogger] = None
     ) -> None:
         self.config = config
-        self.rename_map = rename_map or get_rename_map()
         self.logger = logger or CustomLogger(module_name=__name__).get_logger()
 
     def run(
@@ -38,26 +43,21 @@ class DataCleaningPipeline:
         try:
             self.logger.info("Starting data cleaning pipeline")
 
-            cleaner = DataCleaner(
-                logger=self.logger,
-                rename_map=self.rename_map
-            )
-            
+            cleaner = DataCleaner(logger=self.logger)
+
             self.logger.debug(f"Data type for cleaning: {type(data)}")
             cleaned_data = cleaner.clean(data)
-            
-            # Temporary debug: peek into the data to verify ingestion and flow
-            if isinstance(cleaned_data, Generator):
+
+            # Preview safely
+            if isinstance(cleaned_data, collections.abc.Iterator):
+                cleaned_data, preview = tee(cleaned_data)
                 try:
-                    first_chunk = next(cleaned_data)
+                    first_chunk = next(preview)
                     self.logger.info(f"First chunk preview:\n{first_chunk.head()}")
-                    # Re-create the generator so downstream stages can consume it fresh
-                    cleaned_data = cleaner.clean(data)
                 except StopIteration:
-                    self.logger.warning("No data returned by ingestion.")
+                    self.logger.warning("No data returned by cleaner.")
             else:
                 self.logger.info(f"Data preview:\n{cleaned_data.head()}")
-                
 
             self.logger.info("Data cleaning completed successfully.")
             return cleaned_data

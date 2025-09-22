@@ -1,7 +1,9 @@
 import pandas as pd
+import collections.abc
 from pandas import DataFrame
 from pathlib import Path
 from typing import Optional, Union, Generator
+from itertools import tee
 from myapp.config.config_manager import ConfigManager
 from myapp.utils.logger import CustomLogger
 from myapp.components.data_ingestion import DataIngestion
@@ -9,10 +11,10 @@ from myapp.components.data_ingestion import DataIngestion
 
 class DataIngestionPipeline:
     """
-    Data Ingestion Pipeline.
+    Ingests raw data from disk in a configurable and format-agnostic way.
 
-    Reads data files from the configured directory in various supported formats.
-    Supports eager and lazy loading modes depending on configuration.
+    Supports lazy (chunked) and eager (full load) modes depending on configuration.
+    Automatically detects supported file types (CSV, JSON, XLSX, Parquet).
     """
 
     def __init__(
@@ -37,7 +39,7 @@ class DataIngestionPipeline:
             file_type = self._detect_file_type()
             self.logger.info(f"Starting data ingestion pipeline with file type: {file_type}")
 
-            ingestion = DataIngestion(
+            ingestion_engine = DataIngestion(
                 data_path=self.config.paths.raw,
                 file_type=file_type,
                 lazy=self.config.data.lazy,
@@ -45,25 +47,21 @@ class DataIngestionPipeline:
                 logger=self.logger
             )
 
-            data = ingestion.ingest_data()
-            
-            
-            # Temporary debug: peek into the data to verify ingestion and flow
-            if isinstance(data, Generator):
+            raw_data = ingestion_engine.ingest_data()
+
+            # Safe preview using tee (does not consume original generator)
+            if isinstance(raw_data, collections.abc.Iterator):
+                raw_data, preview = tee(raw_data)
                 try:
-                    first_chunk = next(data)
+                    first_chunk = next(preview)
                     self.logger.info(f"First chunk preview:\n{first_chunk.head()}")
-                    # Re-create the generator so downstream stages can consume it fresh
-                    data = ingestion.ingest_data()
                 except StopIteration:
-                    self.logger.warning("No data returned by ingestion.")
+                    self.logger.warning("No data returned by ingestor.")
             else:
-                self.logger.info(f"Data preview:\n{data.head()}")
-
-
+                self.logger.info(f"Data preview:\n{raw_data.head()}")
 
             self.logger.info("Data ingestion completed successfully.")
-            return data
+            return raw_data
 
         except Exception as e:
             self.logger.error(f"Data ingestion failed: {e}", exc_info=True)

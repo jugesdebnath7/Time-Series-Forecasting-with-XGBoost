@@ -27,7 +27,7 @@ class DataValidator:
             self._validate_ndarray(data)
             return data
 
-        elif isinstance(data, collections.abc.Generator):
+        elif isinstance(data, collections.abc.Iterator):
             return self._validate_generator(data)
 
         else:

@@ -2,6 +2,8 @@ import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
 from typing import Optional, Union, Generator
+from itertools import tee
+import collections.abc
 from myapp.config.config_manager import ConfigManager
 from myapp.utils.logger import CustomLogger
 from myapp.components.data_validation import DataValidator
@@ -11,8 +13,9 @@ class DataValidationPipeline:
     """
     Data Validation Pipeline.
 
-    Validates data files from the configured directory in various supported formats.
-    Supports eager and lazy loading modes depending on configuration.
+    Validates in-memory data or streamed data from files.
+    Supports both eager and lazy loading modes (DataFrame or generator).
+    Delegates validation logic to the `DataValidator` component.
     """
 
     def __init__(
@@ -26,7 +29,7 @@ class DataValidationPipeline:
     def run(
         self, 
         data: Union[DataFrame, Generator[DataFrame, None, None]]
-        ) -> Union[DataFrame, Generator[DataFrame, None, None]]:
+    ) -> Union[DataFrame, Generator[DataFrame, None, None]]:
         """
         Run the data validation pipeline.
 
@@ -43,24 +46,20 @@ class DataValidationPipeline:
             self.logger.info("Starting data validation pipeline")
 
             validator = DataValidator(logger=self.logger)
-            
             self.logger.debug(f"Data type for validation: {type(data)}")
+
             validated_data = validator.validate(data)
-            
-            
-            # Temporary debug: peek into the data to verify ingestion and flow
-            if isinstance(validated_data, Generator):
+
+            if isinstance(validated_data, collections.abc.Iterator):
+                # Use tee to preview without exhausting original
+                validated_data, preview_data = tee(validated_data)
                 try:
-                    first_chunk = next(validated_data)
+                    first_chunk = next(preview_data)
                     self.logger.info(f"First chunk preview:\n{first_chunk.head()}")
-                    # Re-create the generator so downstream stages can consume it fresh
-                    validated_data = validator.validate(validated_data)
                 except StopIteration:
-                    self.logger.warning("No data returned by ingestion.")
+                    self.logger.warning("No data returned by validator.")
             else:
                 self.logger.info(f"Data preview:\n{validated_data.head()}")
-            
-            
 
             self.logger.info("Data validation completed successfully.")
             return validated_data

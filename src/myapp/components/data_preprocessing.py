@@ -28,7 +28,7 @@ class DataPreprocessor:
             self.logger.info("Received ndarray, no preprocessing defined.")
             return data
 
-        elif isinstance(data, collections.abc.Generator):
+        elif isinstance(data, collections.abc.Iterator):
             return self._preprocess_generator(data)
 
         else:
@@ -40,7 +40,7 @@ class DataPreprocessor:
         df: pd.DataFrame
     ) -> pd.DataFrame:
         self.logger.info("Preprocessing pandas DataFrame...")
-        processed_df = self.schema.preprocess_dataframe(df, copy=True, logger=self.logger)
+        processed_df = self.schema.preprocess_dataframe(df, copy=True)
         return processed_df
 
     def _preprocess_generator(
@@ -49,4 +49,4 @@ class DataPreprocessor:
     ) -> Generator[pd.DataFrame, None, None]:
         self.logger.info("Preprocessing generator of DataFrames...")
         for chunk in gen:
-            yield self.schema.preprocess_dataframe(chunk, copy=False, logger=self.logger)
+            yield self.schema.preprocess_dataframe(chunk)

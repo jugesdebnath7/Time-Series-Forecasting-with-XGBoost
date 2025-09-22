@@ -11,75 +11,6 @@ class PreprocessingSchema:
 
     # === Preprocessing strategy functions ===
     @classmethod
-    def fill_mean(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Filling missing values with mean for column '{column}'")
-        df[column].fillna(df[column].mean(), inplace=True)
-
-    @classmethod
-    def fill_median(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Filling missing values with median for column '{column}'")
-        df[column].fillna(df[column].median(), inplace=True)
-
-    @classmethod
-    def fill_mode(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Filling missing values with mode for column '{column}'")
-        df[column].fillna(df[column].mode()[0], inplace=True)
-
-    @classmethod
-    def fill_ffill(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Forward filling missing values for column '{column}'")
-        df[column].fillna(method='ffill', inplace=True)
-
-    @classmethod
-    def fill_bfill(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Backward filling missing values for column '{column}'")
-        df[column].fillna(method='bfill', inplace=True)
-
-    @classmethod
-    def detect_outliers_iqr(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Detecting outliers using IQR for column '{column}'")
-        Q1 = df[column].quantile(0.25)
-        Q3 = df[column].quantile(0.75)
-        IQR = Q3 - Q1
-        lower, upper = Q1 - 1.5 * IQR, Q3 + 1.5 * IQR
-        df[column] = df[column].where(df[column].between(lower, upper), None)
-
-    @classmethod
-    def detect_outliers_zscore(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Detecting outliers using Z-score for column '{column}'")
-        mean = df[column].mean()
-        std = df[column].std()
-        df[column] = df[column].where((df[column] - mean).abs() <= 3 * std, None)
-
-    @classmethod
     def normalize_minmax(
         cls, 
         df: pd.DataFrame, 
@@ -132,7 +63,7 @@ class PreprocessingSchema:
         cls.logger.debug(f"Label encoding column '{column}'")
         df[column] = df[column].astype('category').cat.codes
 
-    @classmethod
+    @classmethod      
     def extract_datetime_features(
         cls,
         df: pd.DataFrame,
@@ -146,21 +77,11 @@ class PreprocessingSchema:
         df[f"{column}_hour"] = df[column].dt.hour
         df[f"{column}_minute"] = df[column].dt.minute
         df[f"{column}_second"] = df[column].dt.second
+        df[f"{column}_dayofweek"] = df[column].dt.dayofweek 
+        
+        
 
     # === Mapping for dynamic execution ===
-    missing_value_strategies: Dict[str, Callable[[pd.DataFrame, str], None]] = {
-        "mean": fill_mean.__func__,
-        "median": fill_median.__func__,
-        "mode": fill_mode.__func__,
-        "ffill": fill_ffill.__func__,
-        "bfill": fill_bfill.__func__,
-    }
-
-    outlier_detection_strategies: Dict[str, Callable[[pd.DataFrame, str], None]] = {
-        "iqr": detect_outliers_iqr.__func__,
-        "zscore": detect_outliers_zscore.__func__,
-    }
-
     scaling_strategies: Dict[str, Callable[[pd.DataFrame, str], None]] = {
         "minmax": normalize_minmax.__func__,
         "zscore": standardize_zscore.__func__,
@@ -183,16 +104,12 @@ class PreprocessingSchema:
     # === Column-specific preprocessing plan ===
     column_preprocessing_plan: Dict[str, Dict[str, Optional[str]]] = {
         "aep_mw": {
-            "missing_value_strategy": "mean",
-            "outlier_detection": "iqr",
             "scaling": "minmax",
             "encoding": None,
             "transformation": None,
             "feature_extraction": None,
         },
         "datetime": {
-            "missing_value_strategy": None,
-            "outlier_detection": None,
             "scaling": None,
             "encoding": None,
             "transformation": None,
@@ -232,7 +149,7 @@ class PreprocessingSchema:
                 strategy_func = strategy_map.get(strategy_key)
                 if strategy_func:
                     cls.logger.debug(f"Applying {step_name} strategy '{strategy_key}' on column '{column}'")
-                    strategy_func(df, column)
+                    strategy_func(cls, df, column)
                 else:
                     cls.logger.warning(f"No strategy function found for key '{strategy_key}' in step '{step_name}'")
 

@@ -1,14 +1,14 @@
 import logging
 from typing import Optional
+import pandas as pd
+from typing import Generator
 from myapp.config.config_manager import ConfigManager
 from myapp.utils.logger import CustomLogger
-
 from myapp.pipelines.stage_01_data_ingestion import DataIngestionPipeline
 from myapp.pipelines.stage_02_data_validation import DataValidationPipeline
 from myapp.pipelines.stage_03_data_cleaning import DataCleaningPipeline
 from myapp.pipelines.stage_04_data_preprocessing import DataPreprocessingPipeline
-import pandas as pd
-from typing import Generator
+from myapp.pipelines.stage_05_feature_engineering import FeatureEngineeringPipeline
 
 
 class MainPipeline:
@@ -50,6 +50,10 @@ class MainPipeline:
             # Stage 4: Data Preprocessing
             preprocessing_pipeline = DataPreprocessingPipeline(config=self.config, logger=self.logger)
             preprocessed_data = preprocessing_pipeline.run(validated_data)
+            
+             # Stage 5: Features Engineering
+            engineering_pipeline = FeatureEngineeringPipeline(config=self.config, logger=self.logger)
+            engineered_data = engineering_pipeline.run(preprocessed_data)
 
             # === Additional pipeline stages go here ===
 
