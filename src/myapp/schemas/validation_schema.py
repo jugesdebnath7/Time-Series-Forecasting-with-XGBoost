@@ -94,6 +94,10 @@ class ValidationSchema:
             cls.logger.info(f"Running custom validation: {name}")
             validation_fn = getattr(cls, method_name)
             validation_fn(df)
+            
+        # Set datetime column as index after all validations
+        cls.logger.info("Setting 'datetime' column as index")
+        df.set_index('datetime', inplace=True)
 
         cls.logger.info("Dataframe validation completed successfully.")
 

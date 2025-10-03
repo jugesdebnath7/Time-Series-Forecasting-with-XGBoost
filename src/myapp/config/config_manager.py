@@ -58,5 +58,5 @@ class ConfigManager:
         return self.config.metadata
 
     @property
-    def app(self) -> AppConfig:
+    def appconfig(self) -> AppConfig:
         return self.config

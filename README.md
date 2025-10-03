@@ -7,30 +7,6 @@ Leverage lag features, rolling statistics, and calendar-based patterns.
 Provide an end-to-end pipeline from raw data to forecast outputs.
 Maintain a clean structure for training, testing, and experimentation.
 
-📦 Project Structure
-Time-Series-Forecasting-with-XGBoost/
-│
-├── config/
-│   └── config.yaml             # Main config for paths, parameters, etc.
-│
-├── data/
-│   ├── raw/                    # Original raw data files
-│   ├── processed/              # Cleaned and transformed data
-│   └── external/               # External sources, e.g., weather or holiday data
-│
-├── notebooks/
-│   ├── eda.ipynb               # Exploratory Data Analysis
-│   └── model_training.ipynb    # Model training & evaluation
-│
-├── training/                   # Scripts related to model training
-│
-├── tests/                      # Unit tests for pipeline components
-│
-├── codebase_template.py        # Template or reusable codebase structure
-│
-├── requirements.txt            # Python dependencies
-└── README.md                   # You're here!
-
 🚀 Quick Start
 Clone the Repository
 

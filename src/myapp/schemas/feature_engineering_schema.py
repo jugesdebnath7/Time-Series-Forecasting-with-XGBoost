@@ -9,7 +9,12 @@ from myapp.utils.logger import CustomLogger
 class FeatureEngineeringSchema:
     """
     Schema for applying engineered features to time-series energy data.
+
+    Assumes:
+    - DataFrame has datetime index of type datetime64[ns].
+    - Datetime feature columns (e.g., datetime_year, datetime_month, etc.) are pre-extracted.
     """
+
     logger = CustomLogger(module_name=__name__).get_logger()
 
     @classmethod
@@ -19,17 +24,22 @@ class FeatureEngineeringSchema:
     ) -> None:
         cls.logger.debug("Adding holiday and weekend flags")
 
-        # Weekend: Saturday (5) or Sunday (6)
+        # Weekend flag: Saturday (5) or Sunday (6)
+        if 'datetime_dayofweek' not in df.columns:
+            raise KeyError("Missing required column 'datetime_dayofweek' for holiday flags.")
         df['is_weekend'] = df['datetime_dayofweek'].isin([5, 6]).astype(int)
 
-        # Holiday detection
-        us_holidays = holidays.US(years=df['datetime_year'].unique())
-        df['is_holiday'] = df['datetime'].dt.normalize().isin(us_holidays).astype(int)
+        # Holiday detection based on datetime index normalized to date
+        if 'datetime_year' not in df.columns:
+            raise KeyError("Missing required column 'datetime_year' for holiday flags.")
+        unique_years = df['datetime_year'].unique()
+        us_holidays = holidays.US(years=unique_years)
+        df['is_holiday'] = df.index.normalize().isin(us_holidays).astype(int)
 
         # New Year's Eve flag
-        df['is_new_year_eve'] = (
-            (df['datetime_month'] == 12) & (df['datetime_day'] == 31)
-        ).astype(int)
+        if 'datetime_month' not in df.columns or 'datetime_day' not in df.columns:
+            raise KeyError("Missing required columns 'datetime_month' or 'datetime_day' for New Year's Eve flag.")
+        df['is_new_year_eve'] = ((df['datetime_month'] == 12) & (df['datetime_day'] == 31)).astype(int)
 
     @classmethod
     def _add_lag_features(
@@ -38,7 +48,7 @@ class FeatureEngineeringSchema:
     ) -> None:
         cls.logger.debug("Adding lag features")
         df['lag_24'] = df['aep_mw'].shift(24)
-        # Optional: Add more lag features if needed
+        # Add more lags if needed
         # df['lag_168'] = df['aep_mw'].shift(168)
 
     @classmethod
@@ -46,7 +56,7 @@ class FeatureEngineeringSchema:
         cls, 
         df: pd.DataFrame
     ) -> None:
-        cls.logger.debug("Adding rolling mean and std")
+        cls.logger.debug("Adding rolling mean and std (24h window)")
         df['rolling_mean_24'] = df['aep_mw'].shift(1).rolling(window=24).mean()
         df['rolling_std_24'] = df['aep_mw'].shift(1).rolling(window=24).std()
 
@@ -55,20 +65,23 @@ class FeatureEngineeringSchema:
         cls, 
         df: pd.DataFrame
     ) -> None:
-        cls.logger.debug("Adding cyclical encodings for hour, dayofweek, month")
-        df['hour_sin'] = np.sin(2 * np.pi * df['datetime_hour'] / 24)
-        df['hour_cos'] = np.cos(2 * np.pi * df['datetime_hour'] / 24)
+        cls.logger.debug("Adding cyclical encodings for hour, dayofweek, and month")
 
-        df['month_cos'] = np.cos(2 * np.pi * df['datetime_month'] / 12)
-
-        df['dayofweek_cos'] = np.cos(2 * np.pi * df['datetime_dayofweek'] / 7)
+        for col, period in [('datetime_hour', 24), ('datetime_dayofweek', 7), ('datetime_month', 12)]:
+            if col not in df.columns:
+                raise KeyError(f"Missing required column '{col}' for cyclical encoding.")
+            df[f'{col}_sin'] = np.sin(2 * np.pi * df[col] / period)
+            df[f'{col}_cos'] = np.cos(2 * np.pi * df[col] / period)
 
     @classmethod
     def _add_interaction_features(
         cls, 
         df: pd.DataFrame
     ) -> None:
-        cls.logger.debug("Adding interaction features")
+        cls.logger.debug("Adding interaction features between hour and holiday/weekend flags")
+
+        if 'datetime_hour' not in df.columns or 'is_holiday' not in df.columns or 'is_weekend' not in df.columns:
+            raise KeyError("Missing required columns for interaction features.")
         df['hour_is_holiday'] = df['datetime_hour'] * df['is_holiday']
         df['hour_is_weekend'] = df['datetime_hour'] * df['is_weekend']
 
@@ -78,7 +91,11 @@ class FeatureEngineeringSchema:
         df: pd.DataFrame
     ) -> None:
         cls.logger.debug("Adding time of day flags")
+
+        if 'datetime_hour' not in df.columns:
+            raise KeyError("Missing required column 'datetime_hour' for time of day flags.")
         hour = df['datetime_hour']
+
         df['is_night'] = hour.isin(range(0, 6)).astype(int)
         df['is_morning'] = hour.isin(range(6, 12)).astype(int)
         df['is_noon'] = hour.isin(range(12, 18)).astype(int)
@@ -89,12 +106,14 @@ class FeatureEngineeringSchema:
         cls, 
         df: pd.DataFrame
     ) -> None:
-        cls.logger.debug("Adding outlier flag based on IQR")
+        cls.logger.debug("Adding outlier flag based on IQR method")
+
         Q1 = df['aep_mw'].quantile(0.25)
         Q3 = df['aep_mw'].quantile(0.75)
         IQR = Q3 - Q1
         lower = Q1 - 1.5 * IQR
         upper = Q3 + 1.5 * IQR
+
         df['is_outlier'] = ((df['aep_mw'] < lower) | (df['aep_mw'] > upper)).astype(int)
 
     @classmethod
@@ -104,24 +123,30 @@ class FeatureEngineeringSchema:
         drop_na: bool = True
     ) -> pd.DataFrame:
         """
-        Main method to apply all feature engineering steps.
+        Apply all feature engineering steps to the dataframe.
 
         Parameters:
-            df (pd.DataFrame): Time-series dataframe with datetime features and 'aep_mw' column.
-            drop_na (bool): Whether to drop rows with NA from lag/rolling ops.
+            df (pd.DataFrame): DataFrame with datetime index and pre-extracted datetime feature columns.
+            drop_na (bool): Whether to drop rows with NA values introduced by lag and rolling window operations.
 
         Returns:
-            pd.DataFrame: DataFrame with additional feature-engineered columns.
+            pd.DataFrame: DataFrame enriched with engineered features.
         """
+
         cls.logger.info("Starting feature engineering process")
         df = df.copy()
-        df.columns = df.columns.str.lower()
 
-        # Ensure datetime column exists and is datetime type
-        if 'datetime' not in df.columns or not pd.api.types.is_datetime64_any_dtype(df['datetime']):
-            raise ValueError("DataFrame must include a 'datetime' column of datetime type.")
+        # Validate datetime index type
+        if not pd.api.types.is_datetime64_any_dtype(df.index):
+            raise TypeError("DataFrame index must be datetime type.")
 
-        # Run feature engineering steps
+        # Validate required columns exist
+        required_cols = ['aep_mw', 'datetime_year', 'datetime_month', 'datetime_day', 'datetime_hour', 'datetime_dayofweek']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise KeyError(f"Missing required columns for feature engineering: {missing_cols}")
+
+        # Apply feature engineering steps
         cls._add_holiday_flags(df)
         cls._add_lag_features(df)
         cls._add_rolling_stats(df)
@@ -131,7 +156,7 @@ class FeatureEngineeringSchema:
         cls._add_outlier_flag(df)
 
         if drop_na:
-            cls.logger.debug("Dropping rows with NA values from lag/rolling features")
+            cls.logger.debug("Dropping rows with NA values after lag/rolling computations")
             df.dropna(inplace=True)
 
         cls.logger.info("Feature engineering completed")

@@ -5,35 +5,11 @@ from myapp.utils.logger import CustomLogger
 
 
 class PreprocessingSchema:
-    """Schema definition for data preprocessing."""
+    """Schema definition for data preprocessing without scaling."""
 
     logger = CustomLogger(module_name=__name__).get_logger()
 
-    # === Preprocessing strategy functions ===
-    @classmethod
-    def normalize_minmax(
-        cls, 
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Normalizing column '{column}' with min-max scaling")
-        min_val, max_val = df[column].min(), df[column].max()
-        if min_val != max_val:
-            df[column] = (df[column] - min_val) / (max_val - min_val)
-        else:
-            cls.logger.debug(f"Column '{column}' has constant value; skipping min-max normalization")
-
-    @classmethod
-    def standardize_zscore(
-        cls,
-        df: pd.DataFrame, 
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Standardizing column '{column}' with z-score")
-        mean = df[column].mean()
-        std = df[column].std()
-        df[column] = (df[column] - mean) / std
-
+    # === Preprocessing strategy functions (no scaling) ===
     @classmethod
     def log_transform(
         cls, 
@@ -63,30 +39,24 @@ class PreprocessingSchema:
         cls.logger.debug(f"Label encoding column '{column}'")
         df[column] = df[column].astype('category').cat.codes
 
-    @classmethod      
-    def extract_datetime_features(
-        cls,
-        df: pd.DataFrame,
-        column: str
-    ) -> None:
-        cls.logger.debug(f"Extracting datetime features from column '{column}'")
-        df[column] = pd.to_datetime(df[column], errors='coerce')
-        df[f"{column}_year"] = df[column].dt.year
-        df[f"{column}_month"] = df[column].dt.month
-        df[f"{column}_day"] = df[column].dt.day
-        df[f"{column}_hour"] = df[column].dt.hour
-        df[f"{column}_minute"] = df[column].dt.minute
-        df[f"{column}_second"] = df[column].dt.second
-        df[f"{column}_dayofweek"] = df[column].dt.dayofweek 
+    @classmethod
+    def extract_datetime_features(cls, df: pd.DataFrame, column: str) -> None:
+        cls.logger.debug(f"Extracting datetime features from index for '{column}'")
         
-        
+        # Confirm index is datetime type, else convert
+        if not pd.api.types.is_datetime64_any_dtype(df.index):
+            cls.logger.info("Converting index to datetime")
+            df.index = pd.to_datetime(df.index, errors='coerce')
 
-    # === Mapping for dynamic execution ===
-    scaling_strategies: Dict[str, Callable[[pd.DataFrame, str], None]] = {
-        "minmax": normalize_minmax.__func__,
-        "zscore": standardize_zscore.__func__,
-    }
+        df[f"{column}_year"] = df.index.year
+        df[f"{column}_month"] = df.index.month
+        df[f"{column}_day"] = df.index.day
+        df[f"{column}_hour"] = df.index.hour
+        df[f"{column}_minute"] = df.index.minute
+        df[f"{column}_second"] = df.index.second
+        df[f"{column}_dayofweek"] = df.index.dayofweek        
 
+    # === Mapping for dynamic execution (no scaling) ===
     encoding_strategies: Dict[str, Callable[[pd.DataFrame, str], None]] = {
         "onehot": one_hot_encode.__func__,
         "label": label_encode.__func__,
@@ -101,10 +71,10 @@ class PreprocessingSchema:
         "datetime_features": extract_datetime_features.__func__,
     }
 
-    # === Column-specific preprocessing plan ===
+    # === Column-specific preprocessing plan (no scaling) ===
     column_preprocessing_plan: Dict[str, Dict[str, Optional[str]]] = {
         "aep_mw": {
-            "scaling": "minmax",
+            "scaling": None,  # no scaling
             "encoding": None,
             "transformation": None,
             "feature_extraction": None,
@@ -131,7 +101,7 @@ class PreprocessingSchema:
         df: pd.DataFrame, 
         copy: bool = False
     ) -> pd.DataFrame:
-        cls.logger.info("Starting preprocessing dataframe")
+        cls.logger.info("Starting preprocessing dataframe without scaling")
         if copy:
             df = df.copy()
 
@@ -153,5 +123,5 @@ class PreprocessingSchema:
                 else:
                     cls.logger.warning(f"No strategy function found for key '{strategy_key}' in step '{step_name}'")
 
-        cls.logger.info("Completed preprocessing dataframe")
+        cls.logger.info("Completed preprocessing dataframe without scaling")
         return df

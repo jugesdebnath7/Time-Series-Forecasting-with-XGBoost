@@ -10,7 +10,7 @@ class PathsConfig(BaseModel):
     raw: str
     processed: str
     output: str
-    models: str
+    artifacts: str
     logs: str
     
 
@@ -27,6 +27,7 @@ class DataConfig(BaseModel):
 
 class TrainingConfig(BaseModel):
     """Configuration for model training."""
+    target_column: str
     random_seed: int
     early_stopping: int
     eval_metric: str

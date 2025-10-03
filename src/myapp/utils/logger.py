@@ -12,7 +12,7 @@ class CustomLogger:
         module_name: str = None
     ) -> None:
         """Initialize logger based on configuration."""
-        self.config = ConfigManager().app
+        self.config = ConfigManager().appconfig
 
         # Paths
         self.log_dir = self.config.paths.logs
