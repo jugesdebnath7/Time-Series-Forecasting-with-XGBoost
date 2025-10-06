@@ -218,6 +218,12 @@ data/raw/
 data/processed/
 data/external/
 
+# Ignore generated artifacts and logs
+artifacts/
+output/
+logs/
+data/processed/
+
 # Jupyter notebook checkpoints only — keep actual notebooks
 .ipynb_checkpoints/
 

@@ -69,16 +69,24 @@ class DataIngestionPipeline:
 
     def _detect_file_type(self) -> str:
         """
-        Detect the file type by scanning the raw data directory.
+            Detect the file type by scanning the raw data directory.
 
-        Returns:
-            str: Detected file type.
+            Returns:
+                str: Detected file type.
 
-        Raises:
-            ValueError: If no supported file types are found.
-        """
+            Raises:
+                ValueError: If no supported file types are found.
+            """
         supported_types = ['csv', 'json', 'xlsx', 'parquet']
         raw_path = Path(self.config.paths.raw)
+
+        # Debug logs
+        self.logger.info(f"Raw data path (from config): {self.config.paths.raw}")
+        self.logger.info(f"Resolved raw_path: {raw_path.resolve()}")
+        if raw_path.exists():
+            self.logger.info(f"Directory exists. Contents: {[f.name for f in raw_path.iterdir()]}")
+        else:
+            self.logger.error("Raw path does NOT exist!")
 
         for file_type in supported_types:
             if any(raw_path.glob(f"*.{file_type}")):

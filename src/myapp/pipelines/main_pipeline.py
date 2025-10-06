@@ -88,10 +88,10 @@ class MainPipeline:
         
             # Stage 5: Features Engineering
             engineered_data = self._featureengineering_pipeline(preprocessed_data) 
-             
-            # === Additional pipeline stages go here ===
-            
+                         
             self.logger.info("Main Pipeline completed successfully.")
+
+            return engineered_data
 
         except Exception as e:
             self.logger.error(f"Main Pipeline failed: {e}", exc_info=True)
